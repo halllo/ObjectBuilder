@@ -43,8 +43,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MainComposer.cs" />
-    <Compile Include="MainGraphProcessor.cs" />
+    <Compile Include="Relations.cs" />
+    <Compile Include="GraphProcessor.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

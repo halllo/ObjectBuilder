@@ -11,6 +11,12 @@ namespace DependencyInjectionTest
 	{
 		static void Main(string[] args)
 		{
+			/* TODO
+
+			CreateConstantEntry & CreateEntry dynamisieren:
+			Nur bei der Konfiguration des GraphProcessors zur Laufzeit verwenden.
+
+			*/
 		}
 	}
 
@@ -24,32 +30,58 @@ namespace DependencyInjectionTest
 			{
 				Akten = new List<Akte_State>
 				{
-					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung }
+					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung },
+					new Akte_State { Id = 2, MandantId = 1, Status = Aktenstatus_State.Abgeschlossen },
 				},
 				Personen = new List<Person_State>
 				{
-					new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" }
+					new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" },
 				},
+				Einstellungen = new List<Einstellungen_State>
+				{
+					new Einstellungen_State { Setting1 = true, Setting2 = false },
+				}
 			};
 
 
 			var graph = Instantiate(states);
 
 
-			Assert.AreEqual("Manuel", graph.Akten.First().Mandant.FirstName);
+			Assert.AreEqual("Manuel", graph.Akten.ElementAt(0).Mandant.FirstName);
+			Assert.AreEqual(1, graph.Akten.ElementAt(0).State.Id);
+			Assert.AreEqual(2, graph.Akten.ElementAt(1).State.Id);
+			Assert.AreEqual(graph.Akten.ElementAt(0).Mandant, graph.Akten.ElementAt(1).Mandant);
+
 			Assert.IsNotNull(graph.Akten.First().Status);
+
+			Assert.AreEqual(true, graph.Akten.ElementAt(0).Einstellungen.Einstellung1);
+			Assert.AreEqual(graph.Akten.ElementAt(0).Einstellungen, graph.Akten.ElementAt(1).Einstellungen);
 		}
 
 		private static ModelGraph Instantiate(ModelStates states)
 		{
-			var mainGraphProcessor = new MainGraphProcessor(new[]
-			{
-				typeof(AkteComposer),
-				typeof(AktenstatusComposer),
-				typeof(PersonComposer),
-			});
-			var graph = mainGraphProcessor.CreateModelsAndCompose(states);
-			return graph;
+			var graphProcessor = new GraphProcessor(
+				Compose.ForeignKeyRelation(
+					g => g.Aktenstatus,
+					g => g.Akten,
+					b => (Aktenstatus_State?)b.State.Status,
+					null,
+					null,
+					(a, b) => b.Status = a),
+				Compose.ForeignKeyRelation(
+					g => g.Personen,
+					g => g.Akten,
+					b => (int?)b.State.MandantId,
+					a => a.Akten = new List<Akte>(),
+					(a, b) => a.Akten.Add(b),
+					(a, b) => b.Mandant = a),
+				Compose.ImplicitRelation(
+					g => g.Akten,
+					g => g.Einstellungen,
+					(a, b) => a.Einstellungen = b.Single())
+			);
+
+			return graphProcessor.CreateModelsAndCompose(states);
 		}
 	}
 
@@ -74,7 +106,7 @@ namespace DependencyInjectionTest
 		public Akte(Akte_State state) { State = state; }
 
 		public Aktenstatus Status { get; set; }
-
+		public Einstellungen Einstellungen { get; set; }
 		public Person Mandant { get; set; }
 
 		public void RechnungStellen()
@@ -98,6 +130,15 @@ namespace DependencyInjectionTest
 		public string LastName => State.LastName;
 
 		public List<Akte> Akten { get; set; }
+	}
+
+	public class Einstellungen
+	{
+		public Einstellungen_State State { get; private set; }
+		public Einstellungen(Einstellungen_State state) { State = state; }
+
+		public bool Einstellung1 => State.Setting1;
+		public bool Einstellung2 => State.Setting2;
 	}
 
 
@@ -147,6 +188,14 @@ namespace DependencyInjectionTest
 		public string LastName { get; set; }
 	}
 
+	[Serializable]
+	[DataContract]
+	public class Einstellungen_State
+	{
+		public bool Setting1 { get; set; }
+		public bool Setting2 { get; set; }
+	}
+
 
 
 
@@ -166,6 +215,7 @@ namespace DependencyInjectionTest
 		public ModelGraphEntry<Akte, int> Akten { get; set; }
 		public ModelGraphEntry<Aktenstatus, Aktenstatus_State> Aktenstatus { get; set; }
 		public ModelGraphEntry<Person, int> Personen { get; set; }
+		public ModelGraphEntry<Einstellungen, int> Einstellungen { get; set; }
 
 	}
 
@@ -176,53 +226,7 @@ namespace DependencyInjectionTest
 		public List<Akte_State> Akten { get; set; }
 		[DataMember]
 		public List<Person_State> Personen { get; set; }
-	}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	public class AktenstatusComposer : Composer
-	{
-		public override void Init()
-		{
-			AddForeignKeyRelation(
-				g => g.Aktenstatus,
-				g => g.Akten,
-				b => (Aktenstatus_State?)b.State.Status,
-				null,
-				null,
-				(a, b) => b.Status = a);
-		}
-	}
-	public class AkteComposer : Composer
-	{
-		public override void Init()
-		{
-		}
-	}
-	public class PersonComposer : Composer
-	{
-		public override void Init()
-		{
-			AddForeignKeyRelation(
-				g => g.Personen,
-				g => g.Akten,
-				b => (int?)b.State.MandantId,
-				a => a.Akten = new List<Akte>(),
-				(a, b) => a.Akten.Add(b),
-				(a, b) => b.Mandant = a);
-		}
+		[DataMember]
+		public List<Einstellungen_State> Einstellungen { get; set; }
 	}
 }

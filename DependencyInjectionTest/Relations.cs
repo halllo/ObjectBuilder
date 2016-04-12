@@ -1,73 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using DependencyInjectionTest;
 
 namespace DependencyInjector
 {
-	public class MainComposer
+	public interface IRelation
 	{
-		public MainComposer(IEnumerable<Type> composerTypes)
-		{
-			mComposerTypes = composerTypes;
-		}
-
-		public void Init()
-		{
-			lock (mLock)
-				if (!mIsInitialized)
-				{
-					// One Class per Object on one-side, alphabetical
-					mComposers = mComposerTypes.Select(Activator.CreateInstance).OfType<Composer>().ToArray();
-
-					foreach (var composer in mComposers)
-					{
-						composer.Init();
-					}
-
-					mIsInitialized = true;
-				}
-		}
-
-		public void Compose(ModelGraph modelGraph)
-		{
-			foreach (var composer in mComposers)
-			{
-				composer.Compose(modelGraph);
-			}
-		}
-
-		private readonly object mLock = new object();
-		private Composer[] mComposers;
-		private bool mIsInitialized;
-
-		private IEnumerable<Type> mComposerTypes;
+		void Compose(ModelGraph modelGraph);
 	}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-	public abstract class Composer
+	public static class Compose
 	{
-		public abstract void Init();
-
-		public void Compose(ModelGraph modelGraph)
-		{
-			mRelations.ForEach(r => r.Compose(modelGraph));
-		}
-
-		protected void AddForeignKeyRelation<TOneModel, TOneId, TManyModel, TManyId>(
+		public static IRelation ForeignKeyRelation<TOneModel, TOneId, TManyModel, TManyId>(
 			Func<ModelGraph, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
 			Func<ModelGraph, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
 			Func<TManyModel, TOneId?> getForeignKeyFunc,
@@ -78,49 +22,42 @@ namespace DependencyInjector
 			where TOneId : struct
 			where TManyId : struct
 		{
-			mRelations.Add(new ForeignKeyRelation<TOneModel, TOneId, TManyModel, TManyId>(
+			return new ForeignKeyRelation<TOneModel, TOneId, TManyModel, TManyId>(
 				getOneEntryFunc,
 				getManyEntryFunc,
 				getForeignKeyFunc,
 				initListAction,
 				addManyModelAction,
-				setOneModelAction));
+				setOneModelAction);
 		}
 
-		protected void AddImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
+		public static IRelation ImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
 			Func<ModelGraph, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
 			Func<ModelGraph, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
 			Action<TOneModel, ModelGraphEntry<TManyModel, TManyId>> setManyModelAction)
 			where TOneId : struct
 			where TManyId : struct
 		{
-			mRelations.Add(new ImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
+			return new ImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
 				getOneEntryFunc,
 				getManyEntryFunc,
-				setManyModelAction));
+				setManyModelAction);
 		}
 
-		protected void AddInverseImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
+		public static IRelation InverseImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
 			Func<ModelGraph, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
 			Func<ModelGraph, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
 			Action<ModelGraphEntry<TOneModel, TOneId>, TManyModel> setOneModelAction)
 			where TOneId : struct
 			where TManyId : struct
 		{
-			mRelations.Add(new InverseImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
+			return new InverseImplicitRelation<TOneModel, TOneId, TManyModel, TManyId>(
 				getOneEntryFunc,
 				getManyEntryFunc,
-				setOneModelAction));
+				setOneModelAction);
 		}
-
-		private readonly List<IRelation> mRelations = new List<IRelation>();
 	}
 
-
-	public interface IRelation
-	{
-		void Compose(ModelGraph modelGraph);
-	}
 
 
 	public class InverseImplicitRelation<TOneModel, TOneId, TManyModel, TManyId> : IRelation

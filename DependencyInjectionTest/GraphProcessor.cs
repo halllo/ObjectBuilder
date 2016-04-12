@@ -6,17 +6,17 @@ using DependencyInjectionTest;
 
 namespace DependencyInjector
 {
-	public class MainGraphProcessor
+	public class GraphProcessor
 	{
 		private readonly ConstantModelGraphProcessor mConstantModelGraphProcessor;
 		private readonly VariableModelGraphProcessor mVariableModelGraphProcessor;
-		private readonly MainComposer mMainComposer;
+		private List<IRelation> mComposer;
 
-		public MainGraphProcessor(IEnumerable<Type> compoerTypes)
+		public GraphProcessor(params IRelation[] relations)
 		{
 			mConstantModelGraphProcessor = new ConstantModelGraphProcessor();
 			mVariableModelGraphProcessor = new VariableModelGraphProcessor();
-			mMainComposer = new MainComposer(compoerTypes);
+			mComposer = relations.ToList();
 		}
 
 		public ModelGraph CreateModelsAndCompose(ModelStates states)
@@ -38,8 +38,10 @@ namespace DependencyInjector
 
 		private void Compose(ModelGraph modelGraph)
 		{
-			mMainComposer.Init();
-			mMainComposer.Compose(modelGraph);
+			foreach (var composer in mComposer)
+			{
+				composer.Compose(modelGraph);
+			}
 		}
 	}
 
@@ -80,6 +82,7 @@ namespace DependencyInjector
 		{
 			modelGraph.Akten = CreateEntry(modelStates.Akten, state => new Akte(state), m => m.State.Id);
 			modelGraph.Personen = CreateEntry(modelStates.Personen, state => new Person(state), m => m.State.Id);
+			modelGraph.Einstellungen = CreateEntry(modelStates.Einstellungen, state => new Einstellungen(state), m => 0);
 		}
 
 		private ModelGraphEntry<TModel, TId> CreateEntry<TModel, TDto, TId>(IEnumerable<TDto> dtos,
