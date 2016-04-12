@@ -30,7 +30,7 @@ namespace DependencyInjector
 		{
 			var modelGraph = new ModelGraph();
 
-			mConstantModelGraphProcessor.CreateEntries(modelGraph,);
+			mConstantModelGraphProcessor.CreateEntries(modelGraph);
 			mVariableModelGraphProcessor.CreateEntries(modelGraph, states);
 
 			return modelGraph;

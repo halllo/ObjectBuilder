@@ -3,20 +3,45 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using DependencyInjector;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DependencyInjectionTest
 {
-	class Program
+	public class Program
 	{
 		static void Main(string[] args)
 		{
+		}
+	}
+
+	[TestClass]
+	public class Tests
+	{
+		[TestMethod]
+		public void AkteMitMandant()
+		{
 			var states = new ModelStates
 			{
-				Akten = new List<Akte_State> { new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung } },
-				Personen = new List<Person_State> { new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" } },
+				Akten = new List<Akte_State>
+				{
+					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung }
+				},
+				Personen = new List<Person_State>
+				{
+					new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" }
+				},
 			};
 
 
+			var graph = Instantiate(states);
+
+
+			Assert.AreEqual("Manuel", graph.Akten.First().Mandant.FirstName);
+			Assert.IsNotNull(graph.Akten.First().Status);
+		}
+
+		private static ModelGraph Instantiate(ModelStates states)
+		{
 			var mainGraphProcessor = new MainGraphProcessor(new[]
 			{
 				typeof(AkteComposer),
@@ -24,13 +49,9 @@ namespace DependencyInjectionTest
 				typeof(PersonComposer),
 			});
 			var graph = mainGraphProcessor.CreateModelsAndCompose(states);
-
-			var akte1 = graph.Akten.First();
-			akte1.RechnungStellen();
+			return graph;
 		}
 	}
-
-
 
 
 
