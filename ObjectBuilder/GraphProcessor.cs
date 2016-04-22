@@ -1,80 +1,34 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ObjectBuilder
 {
-	public static class ObjectFactory
+	public static class GraphProcessor
 	{
-		public static ObjectFactory<TStates> From<TStates>()
-		{
-			return new ObjectFactory<TStates>();
-		}
-	}
-
-	public class ObjectFactory<TStates>
-	{
-		public ObjectFactory<TStates, TModels> Setup<TModels>(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
-		{
-			return new ObjectFactory<TStates, TModels>(graphProcessor, composer);
-		}
-	}
-
-	public class ObjectFactory<TStates, TModels>
-	{
-		private readonly Func<TStates, TModels> mGraphProcessor;
-		private readonly Func<TModels, IEnumerable<IRelation<TModels>>> mComposer;
-
-		public ObjectFactory(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
-		{
-			mGraphProcessor = graphProcessor;
-			mComposer = composer;
-		}
-
-		public TModels Create(TStates states)
-		{
-			var modelGraph = mGraphProcessor(states);
-			var relations = mComposer(modelGraph);
-
-			foreach (var relation in relations)
-			{
-				relation.Compose(modelGraph);
-			}
-
-			return modelGraph;
-		}
-	}
-
-
-
-
-
-	public static class ConstantModelGraphProcessor
-	{
-		public static ModelGraphEntry<TModel, TId> CreateConstantEntry<TModel, TId>(Dictionary<TId, TModel> modelsById,
+		public static ModelGraphEntry<TModel, TId> AsModels<TModel, TId>(
+			this IEnumerable<TModel> models,
 			Func<TModel, TId> getIdFunc)
 			where TId : struct
 		{
 			var entry = new ModelGraphEntry<TModel, TId>(getIdFunc);
-			entry.Set(modelsById);
+			entry.Set(models.ToDictionary(getIdFunc));
 			return entry;
 		}
-	}
 
-
-	public static class VariableModelGraphProcessor
-	{
-		public static ModelGraphEntry<TModel, TId> CreateEntry<TModel, TDto, TId>(IEnumerable<TDto> dtos,
+		public static ModelGraphEntry<TModel, TId> AsModels<TModel, TDto, TId>(
+			this IEnumerable<TDto> states,
 			Func<TDto, TModel> getModelFunc, Func<TModel, TId> getIdFunc)
 			where TId : struct
 		{
-			if (dtos == null)
+			if (states == null)
 			{
 				return null;
 			}
 
 			var entry = new ModelGraphEntry<TModel, TId>(getIdFunc);
-			foreach (var dto in dtos)
+			foreach (var dto in states)
 			{
 				entry.Add(getModelFunc(dto));
 			}

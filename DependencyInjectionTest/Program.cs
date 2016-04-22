@@ -11,9 +11,27 @@ namespace DependencyInjectionTest
 	{
 		static void Main(string[] args)
 		{
-			/* TODO
+			var states = new ModelStates
+			{
+				Akten = new List<Akte_State>
+				{
+					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung },
+					new Akte_State { Id = 2, MandantId = 1, Status = Aktenstatus_State.Abgeschlossen },
+				},
+				Personen = new List<Person_State>
+				{
+					new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" },
+				},
+				Einstellungen = new List<Einstellungen_State>
+				{
+					new Einstellungen_State { Setting1 = true, Setting2 = false },
+				}
+			};
 
-			*/
+
+			var graph = Tests.Instantiate(states);
+			var akte = graph.Akten.GetById(2);
+			akte.RechnungStellen();
 		}
 	}
 
@@ -55,45 +73,45 @@ namespace DependencyInjectionTest
 			Assert.AreEqual(graph.Akten.ElementAt(0).Einstellungen, graph.Akten.ElementAt(1).Einstellungen);
 		}
 
-		private static ModelGraph Instantiate(ModelStates modelStates)
+		public static ModelGraph Instantiate(ModelStates modelStates)
 		{
-			var factory = ObjectFactory.From<ModelStates>().Setup(
-				states => new ModelGraph
+			var factory = ObjectFactory.From<ModelStates>()
+				.SetupCreation(states => new ModelGraph
 				{
-					Akten = VariableModelGraphProcessor.CreateEntry(modelStates.Akten, state => new Akte(state), m => m.State.Id),
-					Personen = VariableModelGraphProcessor.CreateEntry(modelStates.Personen, state => new Person(state), m => m.State.Id),
-					Einstellungen = VariableModelGraphProcessor.CreateEntry(modelStates.Einstellungen, state => new Einstellungen(state), m => 0),
-					Aktenstatus = ConstantModelGraphProcessor.CreateConstantEntry(new List<Aktenstatus>
+					Akten = states.Akten.AsModels(state => new Akte(state), m => m.State.Id),
+					Personen = states.Personen.AsModels(state => new Person(state), m => m.State.Id),
+					Einstellungen = states.Einstellungen.AsModels(state => new Einstellungen(state), m => 0),
+					Aktenstatus = new List<Aktenstatus>
 					{
 						new Aktenstatus(Aktenstatus_State.potenziell),
 						new Aktenstatus(Aktenstatus_State.InBearbeitung),
 						new Aktenstatus(Aktenstatus_State.Abgeschlossen),
 						new Aktenstatus(Aktenstatus_State.abgelehnt)
-					}.ToDictionary(m => m.State), m => m.State),
+					}.AsModels(m => m.State),
 
-				}, models =>
+				})
+				.SetupComposition(models => new[]
 				{
-					return new[]
-					{
-						models.ForeignKeyRelation(
-							g => g.Aktenstatus,
-							g => g.Akten,
-							b => (Aktenstatus_State?) b.State.Status,
-							null,
-							null,
-							(a, b) => b.Status = a),
-						models.ForeignKeyRelation(
-							g => g.Personen,
-							g => g.Akten,
-							b => (int?) b.State.MandantId,
-							a => a.Akten = new List<Akte>(),
-							(a, b) => a.Akten.Add(b),
-							(a, b) => b.Mandant = a),
-						models.ImplicitRelation(
-							g => g.Akten,
-							g => g.Einstellungen,
-							(a, b) => a.Einstellungen = b.Single())
-					};
+					models.ForeignKeyRelation(
+						g => g.Aktenstatus,
+						g => g.Akten,
+						b => (Aktenstatus_State?) b.State.Status,
+						null,
+						null,
+						(a, b) => b.Status = a),
+
+					models.ForeignKeyRelation(
+						g => g.Personen,
+						g => g.Akten,
+						b => (int?) b.State.MandantId,
+						a => a.Akten = new List<Akte>(),
+						(a, b) => a.Akten.Add(b),
+						(a, b) => b.Mandant = a),
+
+					models.ImplicitRelation(
+						g => g.Akten,
+						g => g.Einstellungen,
+						(a, b) => a.Einstellungen = b.Single())
 				});
 
 			return factory.Create(modelStates);

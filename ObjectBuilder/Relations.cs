@@ -2,13 +2,13 @@
 
 namespace ObjectBuilder
 {
-	public interface IRelation<TModels>
+	public interface IRelation<in TModels>
 	{
 		void Compose(TModels modelGraph);
 	}
 
 
-	public static class Compose
+	public static class Composer
 	{
 		public static IRelation<TModels> ForeignKeyRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 			this TModels models,
