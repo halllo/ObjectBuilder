@@ -13,9 +13,6 @@ namespace DependencyInjectionTest
 		{
 			/* TODO
 
-			CreateConstantEntry & CreateEntry dynamisieren:
-			Nur bei der Konfiguration des GraphProcessors zur Laufzeit verwenden.
-
 			*/
 		}
 	}
@@ -58,30 +55,48 @@ namespace DependencyInjectionTest
 			Assert.AreEqual(graph.Akten.ElementAt(0).Einstellungen, graph.Akten.ElementAt(1).Einstellungen);
 		}
 
-		private static ModelGraph Instantiate(ModelStates states)
+		private static ModelGraph Instantiate(ModelStates modelStates)
 		{
-			var graphProcessor = new GraphProcessor(
-				Compose.ForeignKeyRelation(
-					g => g.Aktenstatus,
-					g => g.Akten,
-					b => (Aktenstatus_State?)b.State.Status,
-					null,
-					null,
-					(a, b) => b.Status = a),
-				Compose.ForeignKeyRelation(
-					g => g.Personen,
-					g => g.Akten,
-					b => (int?)b.State.MandantId,
-					a => a.Akten = new List<Akte>(),
-					(a, b) => a.Akten.Add(b),
-					(a, b) => b.Mandant = a),
-				Compose.ImplicitRelation(
-					g => g.Akten,
-					g => g.Einstellungen,
-					(a, b) => a.Einstellungen = b.Single())
-			);
+			var graphProcessor = ObjectBuilder.From<ModelStates>().Setup(
+				states => new ModelGraph
+				{
+					Akten = VariableModelGraphProcessor.CreateEntry(modelStates.Akten, state => new Akte(state), m => m.State.Id),
+					Personen = VariableModelGraphProcessor.CreateEntry(modelStates.Personen, state => new Person(state), m => m.State.Id),
+					Einstellungen = VariableModelGraphProcessor.CreateEntry(modelStates.Einstellungen, state => new Einstellungen(state), m => 0),
+					Aktenstatus = ConstantModelGraphProcessor.CreateConstantEntry(new List<Aktenstatus>
+					{
+						new Aktenstatus(Aktenstatus_State.potenziell),
+						new Aktenstatus(Aktenstatus_State.InBearbeitung),
+						new Aktenstatus(Aktenstatus_State.Abgeschlossen),
+						new Aktenstatus(Aktenstatus_State.abgelehnt)
+					}.ToDictionary(m => m.State), m => m.State),
 
-			return graphProcessor.CreateModelsAndCompose(states);
+				}, models =>
+				{
+					return new[]
+					{
+						models.ForeignKeyRelation(
+							g => g.Aktenstatus,
+							g => g.Akten,
+							b => (Aktenstatus_State?) b.State.Status,
+							null,
+							null,
+							(a, b) => b.Status = a),
+						models.ForeignKeyRelation(
+							g => g.Personen,
+							g => g.Akten,
+							b => (int?) b.State.MandantId,
+							a => a.Akten = new List<Akte>(),
+							(a, b) => a.Akten.Add(b),
+							(a, b) => b.Mandant = a),
+						models.ImplicitRelation(
+							g => g.Akten,
+							g => g.Einstellungen,
+							(a, b) => a.Einstellungen = b.Single())
+					};
+				});
+
+			return graphProcessor.CreateModelsAndCompose(modelStates);
 		}
 	}
 
@@ -111,7 +126,7 @@ namespace DependencyInjectionTest
 
 		public void RechnungStellen()
 		{
-			Console.WriteLine($"Rechnung an: {Mandant.FirstName} {Mandant.LastName}; Akte ist {Status.State}");
+			Console.WriteLine(string.Format("Rechnung an: {0} {1}; Akte ist {2}", Mandant.FirstName, Mandant.LastName, Status.State));
 		}
 	}
 
@@ -126,8 +141,9 @@ namespace DependencyInjectionTest
 		public Person_State State { get; private set; }
 		public Person(Person_State state) { State = state; }
 
-		public string FirstName => State.FirstName;
-		public string LastName => State.LastName;
+		public string FirstName { get { return State.FirstName; } }
+
+		public string LastName { get { return State.LastName; } }
 
 		public List<Akte> Akten { get; set; }
 	}
@@ -137,8 +153,8 @@ namespace DependencyInjectionTest
 		public Einstellungen_State State { get; private set; }
 		public Einstellungen(Einstellungen_State state) { State = state; }
 
-		public bool Einstellung1 => State.Setting1;
-		public bool Einstellung2 => State.Setting2;
+		public bool Einstellung1 { get { return State.Setting1; } }
+		public bool Einstellung2 { get { return State.Setting2; } }
 	}
 
 
@@ -195,8 +211,6 @@ namespace DependencyInjectionTest
 		public bool Setting1 { get; set; }
 		public bool Setting2 { get; set; }
 	}
-
-
 
 
 

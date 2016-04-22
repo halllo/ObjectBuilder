@@ -1,47 +1,47 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using DependencyInjectionTest;
 
 namespace DependencyInjector
 {
-	public class GraphProcessor
+	public static class ObjectBuilder
 	{
-		private readonly ConstantModelGraphProcessor mConstantModelGraphProcessor;
-		private readonly VariableModelGraphProcessor mVariableModelGraphProcessor;
-		private List<IRelation> mComposer;
-
-		public GraphProcessor(params IRelation[] relations)
+		public static ObjectBuilder<TStates> From<TStates>()
 		{
-			mConstantModelGraphProcessor = new ConstantModelGraphProcessor();
-			mVariableModelGraphProcessor = new VariableModelGraphProcessor();
-			mComposer = relations.ToList();
+			return new ObjectBuilder<TStates>();
+		}
+	}
+
+	public class ObjectBuilder<TStates>
+	{
+		public GraphProcesor<TStates, TModels> Setup<TModels>(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
+		{
+			return new GraphProcesor<TStates, TModels>(graphProcessor, composer);
+		}
+	}
+
+	public class GraphProcesor<TStates, TModels>
+	{
+		private readonly Func<TStates, TModels> mGraphProcessor;
+		private readonly Func<TModels, IEnumerable<IRelation<TModels>>> mComposer;
+
+		public GraphProcesor(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
+		{
+			mGraphProcessor = graphProcessor;
+			mComposer = composer;
 		}
 
-		public ModelGraph CreateModelsAndCompose(ModelStates states)
+		public TModels CreateModelsAndCompose(TStates states)
 		{
-			var modelGraph = CreateModels(states);
-			Compose(modelGraph);
-			return modelGraph;
-		}
+			var modelGraph = mGraphProcessor(states);
+			var relations = mComposer(modelGraph);
 
-		private ModelGraph CreateModels(ModelStates states)
-		{
-			var modelGraph = new ModelGraph();
-
-			mConstantModelGraphProcessor.CreateEntries(modelGraph);
-			mVariableModelGraphProcessor.CreateEntries(modelGraph, states);
-
-			return modelGraph;
-		}
-
-		private void Compose(ModelGraph modelGraph)
-		{
-			foreach (var composer in mComposer)
+			foreach (var relation in relations)
 			{
-				composer.Compose(modelGraph);
+				relation.Compose(modelGraph);
 			}
+
+			return modelGraph;
 		}
 	}
 
@@ -49,23 +49,9 @@ namespace DependencyInjector
 
 
 
-
-	public class ConstantModelGraphProcessor
+	public static class ConstantModelGraphProcessor
 	{
-		private readonly Dictionary<Aktenstatus_State, Aktenstatus> AktenstatusModelsNachId = new List<Aktenstatus>
-		{
-			new Aktenstatus(Aktenstatus_State.potenziell),
-			new Aktenstatus(Aktenstatus_State.InBearbeitung),
-			new Aktenstatus(Aktenstatus_State.Abgeschlossen),
-			new Aktenstatus(Aktenstatus_State.abgelehnt)
-		}.ToDictionary(m => m.State);
-
-		public void CreateEntries(ModelGraph modelGraph)
-		{
-			modelGraph.Aktenstatus = CreateConstantEntry(AktenstatusModelsNachId, m => m.State);
-		}
-
-		private ModelGraphEntry<TModel, TId> CreateConstantEntry<TModel, TId>(Dictionary<TId, TModel> modelsById,
+		public static ModelGraphEntry<TModel, TId> CreateConstantEntry<TModel, TId>(Dictionary<TId, TModel> modelsById,
 			Func<TModel, TId> getIdFunc)
 			where TId : struct
 		{
@@ -76,16 +62,9 @@ namespace DependencyInjector
 	}
 
 
-	public class VariableModelGraphProcessor
+	public static class VariableModelGraphProcessor
 	{
-		public void CreateEntries(ModelGraph modelGraph, ModelStates modelStates)
-		{
-			modelGraph.Akten = CreateEntry(modelStates.Akten, state => new Akte(state), m => m.State.Id);
-			modelGraph.Personen = CreateEntry(modelStates.Personen, state => new Person(state), m => m.State.Id);
-			modelGraph.Einstellungen = CreateEntry(modelStates.Einstellungen, state => new Einstellungen(state), m => 0);
-		}
-
-		private ModelGraphEntry<TModel, TId> CreateEntry<TModel, TDto, TId>(IEnumerable<TDto> dtos,
+		public static ModelGraphEntry<TModel, TId> CreateEntry<TModel, TDto, TId>(IEnumerable<TDto> dtos,
 			Func<TDto, TModel> getModelFunc, Func<TModel, TId> getIdFunc)
 			where TId : struct
 		{
@@ -112,9 +91,10 @@ namespace DependencyInjector
 		public ModelGraphEntry(Func<TModel, TId> getIdFunc)
 		{
 			mGetIdFunc = getIdFunc;
+			ModelsById = new Dictionary<TId, TModel>();
 		}
 
-		public Dictionary<TId, TModel> ModelsById { get; private set; } = new Dictionary<TId, TModel>();
+		public Dictionary<TId, TModel> ModelsById { get; private set; }
 
 		public IEnumerator<TModel> GetEnumerator()
 		{
