@@ -92,6 +92,17 @@ namespace DependencyInjectionTest
 				})
 				.SetupComposition(models => new[]
 				{
+					/* TODO
+					 * 
+					 * IRelation hat nicht mehr TModels, sondern TOneModel und TManyModel
+					 * 
+					 */
+ 
+					models.Personen.IsReferencedByMany(models.Akten).WithForeignKey(b => (int?) b.State.MandantId)
+						.Init(a => a.Akten = new List<Akte>())
+						.SetLeft((a, b) => a.Akten.Add(b))
+						.SetRight((a, b) => b.Mandant = a),
+
 					models.ForeignKeyRelation(
 						g => g.Aktenstatus,
 						g => g.Akten,
