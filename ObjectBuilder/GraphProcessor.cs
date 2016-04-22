@@ -2,36 +2,36 @@
 using System.Collections;
 using System.Collections.Generic;
 
-namespace DependencyInjector
+namespace ObjectBuilder
 {
-	public static class ObjectBuilder
+	public static class ObjectFactory
 	{
-		public static ObjectBuilder<TStates> From<TStates>()
+		public static ObjectFactory<TStates> From<TStates>()
 		{
-			return new ObjectBuilder<TStates>();
+			return new ObjectFactory<TStates>();
 		}
 	}
 
-	public class ObjectBuilder<TStates>
+	public class ObjectFactory<TStates>
 	{
-		public GraphProcesor<TStates, TModels> Setup<TModels>(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
+		public ObjectFactory<TStates, TModels> Setup<TModels>(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
 		{
-			return new GraphProcesor<TStates, TModels>(graphProcessor, composer);
+			return new ObjectFactory<TStates, TModels>(graphProcessor, composer);
 		}
 	}
 
-	public class GraphProcesor<TStates, TModels>
+	public class ObjectFactory<TStates, TModels>
 	{
 		private readonly Func<TStates, TModels> mGraphProcessor;
 		private readonly Func<TModels, IEnumerable<IRelation<TModels>>> mComposer;
 
-		public GraphProcesor(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
+		public ObjectFactory(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
 		{
 			mGraphProcessor = graphProcessor;
 			mComposer = composer;
 		}
 
-		public TModels CreateModelsAndCompose(TStates states)
+		public TModels Create(TStates states)
 		{
 			var modelGraph = mGraphProcessor(states);
 			var relations = mComposer(modelGraph);

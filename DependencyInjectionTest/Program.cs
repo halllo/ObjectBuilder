@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using DependencyInjector;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ObjectBuilder;
 
 namespace DependencyInjectionTest
 {
@@ -57,7 +57,7 @@ namespace DependencyInjectionTest
 
 		private static ModelGraph Instantiate(ModelStates modelStates)
 		{
-			var graphProcessor = ObjectBuilder.From<ModelStates>().Setup(
+			var factory = ObjectFactory.From<ModelStates>().Setup(
 				states => new ModelGraph
 				{
 					Akten = VariableModelGraphProcessor.CreateEntry(modelStates.Akten, state => new Akte(state), m => m.State.Id),
@@ -96,7 +96,7 @@ namespace DependencyInjectionTest
 					};
 				});
 
-			return graphProcessor.CreateModelsAndCompose(modelStates);
+			return factory.Create(modelStates);
 		}
 	}
 

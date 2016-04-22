@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DependencyInjector
+namespace ObjectBuilder
 {
 	public interface IRelation<TModels>
 	{
