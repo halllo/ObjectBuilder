@@ -92,6 +92,13 @@ namespace DependencyInjectionTest
 				})
 				.SetupComposition(compose =>
 				{
+					/*
+					 * TODO:
+					 * 
+					 * cut out WithForeignKey chain
+					 * 
+					 */
+
 					compose.One(g => g.Aktenstatus).HasMany(g => g.Akten).WithForeignKey(b => (Aktenstatus_State?)b.State.Status)
 						.Assign(
 							init: null,
