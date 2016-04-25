@@ -90,39 +90,22 @@ namespace DependencyInjectionTest
 					}.AsModels(m => m.State),
 
 				})
-				.SetupComposition(models => new[]
+				.SetupComposition(compose =>
 				{
-					/* TODO
-					 * 
-					 * IRelation hat nicht mehr TModels, sondern TOneModel und TManyModel
-					 * 
-					 */
- 
-					models.Personen.IsReferencedByMany(models.Akten).WithForeignKey(b => (int?) b.State.MandantId)
-						.Init(a => a.Akten = new List<Akte>())
-						.SetLeft((a, b) => a.Akten.Add(b))
-						.SetRight((a, b) => b.Mandant = a),
+					compose.One(g => g.Aktenstatus).HasMany(g => g.Akten).WithForeignKey(b => (Aktenstatus_State?)b.State.Status)
+						.Assign(
+							init: null,
+							addMany: null,
+							setOne: (a, b) => b.Status = a);
 
-					models.ForeignKeyRelation(
-						g => g.Aktenstatus,
-						g => g.Akten,
-						b => (Aktenstatus_State?) b.State.Status,
-						null,
-						null,
-						(a, b) => b.Status = a),
+					compose.One(g => g.Personen).HasMany(g => g.Akten).WithForeignKey(b => (int?)b.State.MandantId)
+						.Assign(
+							init: a => a.Akten = new List<Akte>(),
+							addMany: (a, b) => a.Akten.Add(b),
+							setOne: (a, b) => b.Mandant = a);
 
-					models.ForeignKeyRelation(
-						g => g.Personen,
-						g => g.Akten,
-						b => (int?) b.State.MandantId,
-						a => a.Akten = new List<Akte>(),
-						(a, b) => a.Akten.Add(b),
-						(a, b) => b.Mandant = a),
-
-					models.ImplicitRelation(
-						g => g.Akten,
-						g => g.Einstellungen,
-						(a, b) => a.Einstellungen = b.Single())
+					compose.One(g => g.Akten).HasMany(g => g.Einstellungen)
+						.Assign((a, b) => a.Einstellungen = b.Single());
 				});
 
 			return factory.Create(modelStates);

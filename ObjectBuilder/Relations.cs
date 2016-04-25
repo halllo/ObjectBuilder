@@ -10,8 +10,8 @@ namespace ObjectBuilder
 
 	public static class Composer
 	{
-		public static IRelation<TModels> ForeignKeyRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
-			this TModels models,
+		public static ObjectComposer<TModels> ForeignKeyRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
+			this ObjectComposer<TModels> composer,
 			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
 			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
 			Func<TManyModel, TOneId?> getForeignKeyFunc,
@@ -22,44 +22,46 @@ namespace ObjectBuilder
 			where TOneId : struct
 			where TManyId : struct
 		{
-			return new ForeignKeyRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
+			composer.Add(new ForeignKeyRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 				getOneEntryFunc,
 				getManyEntryFunc,
 				getForeignKeyFunc,
 				initListAction,
 				addManyModelAction,
-				setOneModelAction);
+				setOneModelAction));
+			return composer;
 		}
 
-		public static IRelation<TModels> ImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
-			this TModels models,
+		public static ObjectComposer<TModels> ImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
+			this ObjectComposer<TModels> composer,
 			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
 			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
 			Action<TOneModel, ModelGraphEntry<TManyModel, TManyId>> setManyModelAction)
 			where TOneId : struct
 			where TManyId : struct
 		{
-			return new ImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
+			composer.Add(new ImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 				getOneEntryFunc,
 				getManyEntryFunc,
-				setManyModelAction);
+				setManyModelAction));
+			return composer;
 		}
 
-		public static IRelation<TModels> InverseImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
-			this TModels models,
+		public static ObjectComposer<TModels> InverseImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
+			this ObjectComposer<TModels> composer,
 			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
 			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
 			Action<ModelGraphEntry<TOneModel, TOneId>, TManyModel> setOneModelAction)
 			where TOneId : struct
 			where TManyId : struct
 		{
-			return new InverseImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
+			composer.Add(new InverseImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 				getOneEntryFunc,
 				getManyEntryFunc,
-				setOneModelAction);
+				setOneModelAction));
+			return composer;
 		}
 	}
-
 
 
 	public class InverseImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId> : IRelation<TModels>

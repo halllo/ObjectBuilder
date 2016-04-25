@@ -22,30 +22,47 @@ namespace ObjectBuilder
 	public class ObjectFactory<TStates, TModels>
 	{
 		private readonly Func<TStates, TModels> mGraphProcessor;
-		private readonly Func<TModels, IEnumerable<IRelation<TModels>>> mComposer;
+		private readonly ObjectComposer<TModels> mComposer;
 
-		public ObjectFactory(Func<TStates, TModels> graphProcessor, Func<TModels, IEnumerable<IRelation<TModels>>> composer)
+		public ObjectFactory(Func<TStates, TModels> graphProcessor, ObjectComposer<TModels> composer)
 		{
 			mGraphProcessor = graphProcessor;
 			mComposer = composer;
 		}
 
-		public ObjectFactory<TStates, TModels> SetupComposition(Func<TModels, IEnumerable<IRelation<TModels>>> composer)
+		public ObjectFactory<TStates, TModels> SetupComposition(Action<ObjectComposer<TModels>> composer)
 		{
-			return new ObjectFactory<TStates, TModels>(mGraphProcessor, composer);
+			var newComposer = new ObjectComposer<TModels>();
+			composer(newComposer);
+
+			return new ObjectFactory<TStates, TModels>(mGraphProcessor, newComposer);
 		}
 
 		public TModels Create(TStates states)
 		{
 			var modelGraph = mGraphProcessor(states);
-			var relations = mComposer(modelGraph);
 
-			foreach (var relation in relations)
+			foreach (var relation in mComposer.Relations)
 			{
 				relation.Compose(modelGraph);
 			}
 
 			return modelGraph;
+		}
+	}
+
+	public class ObjectComposer<TModels>
+	{
+		internal ObjectComposer()
+		{
+			Relations = new List<IRelation<TModels>>();
+		}
+
+		internal List<IRelation<TModels>> Relations { get; set; }
+
+		public void Add(IRelation<TModels> relation)
+		{
+			Relations.Add(relation);
 		}
 	}
 }
