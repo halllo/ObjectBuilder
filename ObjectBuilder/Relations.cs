@@ -199,4 +199,19 @@ namespace ObjectBuilder
 		private readonly Action<TOneModel> mInitListAction;
 		private readonly Action<TOneModel, TManyModel> mSetOneModelAction;
 	}
+
+
+	public static class Dictionary
+	{
+		public static TValue GetById<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey? id) where TKey : struct
+		{
+			if (!id.HasValue)
+			{
+				return default(TValue);
+			}
+
+			TValue found;
+			return dict.TryGetValue(id.Value, out found) ? found : default(TValue);
+		}
+	}
 }

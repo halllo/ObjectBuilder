@@ -5,17 +5,9 @@ namespace ObjectBuilder
 {
 	public static class ObjectFactory
 	{
-		public static ObjectFactory<TStates> From<TStates>()
+		public static ObjectFactory<TStates, TStates> From<TStates>()
 		{
-			return new ObjectFactory<TStates>();
-		}
-	}
-
-	public class ObjectFactory<TStates>
-	{
-		public ObjectFactory<TStates, TModels> SetupCreation<TModels>(Func<TStates, TModels> graphProcessor)
-		{
-			return new ObjectFactory<TStates, TModels>(graphProcessor, null);
+			return new ObjectFactory<TStates, TStates>(s => s, null);
 		}
 	}
 
@@ -28,6 +20,11 @@ namespace ObjectBuilder
 		{
 			mGraphProcessor = graphProcessor;
 			mComposer = composer;
+		}
+
+		public ObjectFactory<TStates, TModelsNext> SetupCreation<TModelsNext>(Func<TStates, TModelsNext> graphProcessor)
+		{
+			return new ObjectFactory<TStates, TModelsNext>(graphProcessor, null);
 		}
 
 		public ObjectFactory<TStates, TModels> SetupComposition(Action<ObjectComposer<TModels>> composer)
