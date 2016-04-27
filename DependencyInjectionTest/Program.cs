@@ -30,7 +30,7 @@ namespace DependencyInjectionTest
 
 
 			var graph = Tests.Instantiate(states);
-			var akte = graph.Akten.GetById(2);
+			var akte = graph.Akten[2];
 			akte.RechnungStellen();
 		}
 	}
@@ -51,6 +51,7 @@ namespace DependencyInjectionTest
 				Personen = new List<Person_State>
 				{
 					new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" },
+					new Person_State { Id = 2, FirstName = "Manuel", LastName = "Naujoks", ParentId = 1},
 				},
 				Einstellungen = new List<Einstellungen_State>
 				{
@@ -62,15 +63,18 @@ namespace DependencyInjectionTest
 			var graph = Instantiate(states);
 
 
-			Assert.AreEqual("Manuel", graph.Akten.ElementAt(0).Mandant.FirstName);
-			Assert.AreEqual(1, graph.Akten.ElementAt(0).State.Id);
-			Assert.AreEqual(2, graph.Akten.ElementAt(1).State.Id);
-			Assert.AreEqual(graph.Akten.ElementAt(0).Mandant, graph.Akten.ElementAt(1).Mandant);
+			Assert.AreEqual("Manuel", graph.Akten.Values.ElementAt(0).Mandant.FirstName);
+			Assert.AreEqual(1, graph.Akten.Values.ElementAt(0).State.Id);
+			Assert.AreEqual(2, graph.Akten.Values.ElementAt(1).State.Id);
+			Assert.AreEqual(graph.Akten.Values.ElementAt(0).Mandant, graph.Akten.Values.ElementAt(1).Mandant);
 
-			Assert.IsNotNull(graph.Akten.First().Status);
+			Assert.IsNotNull(graph.Akten.Values.First().Status);
 
-			Assert.AreEqual(true, graph.Akten.ElementAt(0).Einstellungen.Einstellung1);
-			Assert.AreEqual(graph.Akten.ElementAt(0).Einstellungen, graph.Akten.ElementAt(1).Einstellungen);
+			Assert.AreEqual(true, graph.Akten.Values.ElementAt(0).Einstellungen.Einstellung1);
+			Assert.AreEqual(graph.Akten.Values.ElementAt(0).Einstellungen, graph.Akten.Values.ElementAt(1).Einstellungen);
+
+			Assert.IsNull(graph.Personen.Values.ElementAt(0).Eltern);
+			Assert.AreEqual(graph.Personen.Values.ElementAt(0), graph.Personen.Values.ElementAt(1).Eltern);
 		}
 
 		public static ModelGraph Instantiate(ModelStates modelStates)
@@ -78,41 +82,46 @@ namespace DependencyInjectionTest
 			var factory = ObjectFactory.From<ModelStates>()
 				.SetupCreation(states => new ModelGraph
 				{
-					Akten = states.Akten.AsModels(state => new Akte(state), m => m.State.Id),
-					Personen = states.Personen.AsModels(state => new Person(state), m => m.State.Id),
-					Einstellungen = states.Einstellungen.AsModels(state => new Einstellungen(state), m => 0),
-					Aktenstatus = new List<Aktenstatus>
+					Akten = states.Akten.ToDictionary(s => s.Id, s => new Akte(s)),
+					Personen = states.Personen.ToDictionary(s => s.Id, s => new Person(s)),
+					Einstellungen = states.Einstellungen.ToDictionary(s => 0, s => new Einstellungen(s)),
+					Aktenstatus = new Dictionary<Aktenstatus_State, Aktenstatus>
 					{
-						new Aktenstatus(Aktenstatus_State.potenziell),
-						new Aktenstatus(Aktenstatus_State.InBearbeitung),
-						new Aktenstatus(Aktenstatus_State.Abgeschlossen),
-						new Aktenstatus(Aktenstatus_State.abgelehnt)
-					}.AsModels(m => m.State),
-
+						{ Aktenstatus_State.potenziell, new Aktenstatus(Aktenstatus_State.potenziell) },
+						{ Aktenstatus_State.InBearbeitung, new Aktenstatus(Aktenstatus_State.InBearbeitung) },
+						{ Aktenstatus_State.Abgeschlossen, new Aktenstatus(Aktenstatus_State.Abgeschlossen) },
+						{ Aktenstatus_State.abgelehnt, new Aktenstatus(Aktenstatus_State.abgelehnt) }
+					},
 				})
 				.SetupComposition(compose =>
 				{
 					/*
 					 * TODO:
 					 * 
-					 * cut out WithForeignKey chain
+					 * better assign syntax
 					 * 
 					 */
 
-					compose.One(g => g.Aktenstatus).HasMany(g => g.Akten).WithForeignKey(b => (Aktenstatus_State?)b.State.Status)
+					compose.One(g => g.Aktenstatus).HasMany(g => g.Akten, b => b.State.Status)
 						.Assign(
 							init: null,
 							addMany: null,
 							setOne: (a, b) => b.Status = a);
 
-					compose.One(g => g.Personen).HasMany(g => g.Akten).WithForeignKey(b => (int?)b.State.MandantId)
+					compose.One(g => g.Personen).HasMany(g => g.Akten, b => b.State.MandantId)
 						.Assign(
 							init: a => a.Akten = new List<Akte>(),
 							addMany: (a, b) => a.Akten.Add(b),
 							setOne: (a, b) => b.Mandant = a);
 
+					compose.One(g => g.Personen).HasMany(g => g.Personen, b => b.State.ParentId)
+						.Assign(
+							init: null,
+							addMany: null,
+							setOne: (a, b) => b.Eltern = a);
+
 					compose.One(g => g.Akten).HasMany(g => g.Einstellungen)
-						.Assign((a, b) => a.Einstellungen = b.Single());
+						.Assign((a, b) => a.Einstellungen = b.Values.Single());
 				});
 
 			return factory.Create(modelStates);
@@ -165,6 +174,8 @@ namespace DependencyInjectionTest
 		public string LastName { get { return State.LastName; } }
 
 		public List<Akte> Akten { get; set; }
+
+		public Person Eltern { get; set; }
 	}
 
 	public class Einstellungen
@@ -219,6 +230,7 @@ namespace DependencyInjectionTest
 	public class Person_State
 	{
 		public int Id { get; set; }
+		public int? ParentId { get; set; }
 		public string FirstName { get; set; }
 		public string LastName { get; set; }
 	}
@@ -245,10 +257,10 @@ namespace DependencyInjectionTest
 
 	public class ModelGraph
 	{
-		public ModelGraphEntry<Akte, int> Akten { get; set; }
-		public ModelGraphEntry<Aktenstatus, Aktenstatus_State> Aktenstatus { get; set; }
-		public ModelGraphEntry<Person, int> Personen { get; set; }
-		public ModelGraphEntry<Einstellungen, int> Einstellungen { get; set; }
+		public Dictionary<int, Akte> Akten { get; set; }
+		public Dictionary<Aktenstatus_State, Aktenstatus> Aktenstatus { get; set; }
+		public Dictionary<int, Person> Personen { get; set; }
+		public Dictionary<int, Einstellungen> Einstellungen { get; set; }
 
 	}
 

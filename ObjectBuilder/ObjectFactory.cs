@@ -55,14 +55,16 @@ namespace ObjectBuilder
 	{
 		internal ObjectComposer()
 		{
-			Relations = new List<IRelation<TModels>>();
+			mRelations = new List<IRelation<TModels>>();
 		}
 
-		internal List<IRelation<TModels>> Relations { get; set; }
+		readonly List<IRelation<TModels>> mRelations;
+
+		public IEnumerable<IRelation<TModels>> Relations { get { return mRelations; } }
 
 		public void Add(IRelation<TModels> relation)
 		{
-			Relations.Add(relation);
+			mRelations.Add(relation);
 		}
 	}
 }

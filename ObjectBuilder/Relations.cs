@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace ObjectBuilder
 {
@@ -12,8 +13,8 @@ namespace ObjectBuilder
 	{
 		public static ObjectComposer<TModels> ForeignKeyRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 			this ObjectComposer<TModels> composer,
-			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
-			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
+			Func<TModels, Dictionary<TOneId, TOneModel>> getOneEntryFunc,
+			Func<TModels, Dictionary<TManyId, TManyModel>> getManyEntryFunc,
 			Func<TManyModel, TOneId?> getForeignKeyFunc,
 			Action<TOneModel> initListAction,
 			Action<TOneModel, TManyModel> addManyModelAction,
@@ -34,9 +35,9 @@ namespace ObjectBuilder
 
 		public static ObjectComposer<TModels> ImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 			this ObjectComposer<TModels> composer,
-			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
-			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
-			Action<TOneModel, ModelGraphEntry<TManyModel, TManyId>> setManyModelAction)
+			Func<TModels, Dictionary<TOneId, TOneModel>> getOneEntryFunc,
+			Func<TModels, Dictionary<TManyId, TManyModel>> getManyEntryFunc,
+			Action<TOneModel, Dictionary<TManyId, TManyModel>> setManyModelAction)
 			where TOneId : struct
 			where TManyId : struct
 		{
@@ -49,9 +50,9 @@ namespace ObjectBuilder
 
 		public static ObjectComposer<TModels> InverseImplicitRelation<TModels, TOneModel, TOneId, TManyModel, TManyId>(
 			this ObjectComposer<TModels> composer,
-			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
-			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
-			Action<ModelGraphEntry<TOneModel, TOneId>, TManyModel> setOneModelAction)
+			Func<TModels, Dictionary<TOneId, TOneModel>> getOneEntryFunc,
+			Func<TModels, Dictionary<TManyId, TManyModel>> getManyEntryFunc,
+			Action<Dictionary<TOneId, TOneModel>, TManyModel> setOneModelAction)
 			where TOneId : struct
 			where TManyId : struct
 		{
@@ -69,9 +70,9 @@ namespace ObjectBuilder
 		where TManyId : struct
 	{
 		public InverseImplicitRelation(
-			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
-			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
-			Action<ModelGraphEntry<TOneModel, TOneId>, TManyModel> setOneModelAction)
+			Func<TModels, Dictionary<TOneId, TOneModel>> getOneEntryFunc,
+			Func<TModels, Dictionary<TManyId, TManyModel>> getManyEntryFunc,
+			Action<Dictionary<TOneId, TOneModel>, TManyModel> setOneModelAction)
 		{
 			mGetOneEntryFunc = getOneEntryFunc;
 			mGetManyEntryFunc = getManyEntryFunc;
@@ -87,14 +88,14 @@ namespace ObjectBuilder
 			{
 				foreach (var manyModel in manyEntry)
 				{
-					mSetOneModelAction(oneEntry, manyModel);
+					mSetOneModelAction(oneEntry, manyModel.Value);
 				}
 			}
 		}
 
-		private readonly Func<TModels, ModelGraphEntry<TManyModel, TManyId>> mGetManyEntryFunc;
-		private readonly Func<TModels, ModelGraphEntry<TOneModel, TOneId>> mGetOneEntryFunc;
-		private readonly Action<ModelGraphEntry<TOneModel, TOneId>, TManyModel> mSetOneModelAction;
+		private readonly Func<TModels, Dictionary<TManyId, TManyModel>> mGetManyEntryFunc;
+		private readonly Func<TModels, Dictionary<TOneId, TOneModel>> mGetOneEntryFunc;
+		private readonly Action<Dictionary<TOneId, TOneModel>, TManyModel> mSetOneModelAction;
 	}
 
 
@@ -103,9 +104,9 @@ namespace ObjectBuilder
 		where TManyId : struct
 	{
 		public ImplicitRelation(
-			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
-			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
-			Action<TOneModel, ModelGraphEntry<TManyModel, TManyId>> setManyModelAction)
+			Func<TModels, Dictionary<TOneId, TOneModel>> getOneEntryFunc,
+			Func<TModels, Dictionary<TManyId, TManyModel>> getManyEntryFunc,
+			Action<TOneModel, Dictionary<TManyId, TManyModel>> setManyModelAction)
 		{
 			mGetOneEntryFunc = getOneEntryFunc;
 			mGetManyEntryFunc = getManyEntryFunc;
@@ -121,14 +122,14 @@ namespace ObjectBuilder
 			{
 				foreach (var oneModel in oneEntry)
 				{
-					mSetManyModelAction(oneModel, manyEntry);
+					mSetManyModelAction(oneModel.Value, manyEntry);
 				}
 			}
 		}
 
-		private readonly Func<TModels, ModelGraphEntry<TManyModel, TManyId>> mGetManyEntryFunc;
-		private readonly Func<TModels, ModelGraphEntry<TOneModel, TOneId>> mGetOneEntryFunc;
-		private readonly Action<TOneModel, ModelGraphEntry<TManyModel, TManyId>> mSetManyModelAction;
+		private readonly Func<TModels, Dictionary<TManyId, TManyModel>> mGetManyEntryFunc;
+		private readonly Func<TModels, Dictionary<TOneId, TOneModel>> mGetOneEntryFunc;
+		private readonly Action<TOneModel, Dictionary<TManyId, TManyModel>> mSetManyModelAction;
 	}
 
 
@@ -138,8 +139,8 @@ namespace ObjectBuilder
 		where TManyId : struct
 	{
 		public ForeignKeyRelation(
-			Func<TModels, ModelGraphEntry<TOneModel, TOneId>> getOneEntryFunc,
-			Func<TModels, ModelGraphEntry<TManyModel, TManyId>> getManyEntryFunc,
+			Func<TModels, Dictionary<TOneId, TOneModel>> getOneEntryFunc,
+			Func<TModels, Dictionary<TManyId, TManyModel>> getManyEntryFunc,
 			Func<TManyModel, TOneId?> getForeignKeyFunc,
 			Action<TOneModel> initListAction,
 			Action<TOneModel, TManyModel> addManyModelAction,
@@ -165,26 +166,26 @@ namespace ObjectBuilder
 				{
 					foreach (var oneModel in oneEntry)
 					{
-						mInitListAction(oneModel);
+						mInitListAction(oneModel.Value);
 					}
 				}
 
 				foreach (var manyModel in manyEntry)
 				{
-					var foreignKey = mGetForeignKeyFunc(manyModel);
+					var foreignKey = mGetForeignKeyFunc(manyModel.Value);
 					var oneModel = oneEntry.GetById(foreignKey);
 
 					if (mSetOneModelAction != null)
 					{
 						if (foreignKey.HasValue == (oneModel != null))
 						{
-							mSetOneModelAction(oneModel, manyModel);
+							mSetOneModelAction(oneModel, manyModel.Value);
 						}
 					}
 
 					if (oneModel != null && mAddManyModelAction != null)
 					{
-						mAddManyModelAction(oneModel, manyModel);
+						mAddManyModelAction(oneModel, manyModel.Value);
 					}
 				}
 			}
@@ -193,8 +194,8 @@ namespace ObjectBuilder
 		private readonly Action<TOneModel, TManyModel> mAddManyModelAction;
 
 		private readonly Func<TManyModel, TOneId?> mGetForeignKeyFunc;
-		private readonly Func<TModels, ModelGraphEntry<TManyModel, TManyId>> mGetManyEntryFunc;
-		private readonly Func<TModels, ModelGraphEntry<TOneModel, TOneId>> mGetOneEntryFunc;
+		private readonly Func<TModels, Dictionary<TManyId, TManyModel>> mGetManyEntryFunc;
+		private readonly Func<TModels, Dictionary<TOneId, TOneModel>> mGetOneEntryFunc;
 		private readonly Action<TOneModel> mInitListAction;
 		private readonly Action<TOneModel, TManyModel> mSetOneModelAction;
 	}
