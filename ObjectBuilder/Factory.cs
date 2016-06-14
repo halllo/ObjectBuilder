@@ -5,7 +5,7 @@ namespace ObjectBuilder
 {
 	public interface IFactory
 	{
-		T New<T>(int id, params object[] args);
+		T New<T>(object id, params object[] args);
 	}
 
 	internal class Factory<TModels> : IFactory
@@ -21,7 +21,7 @@ namespace ObjectBuilder
 			_compose = compose;
 		}
 
-		public T New<T>(int id, params object[] args)
+		public T New<T>(object id, params object[] args)
 		{
 			var newModelType = typeof(T);
 			var newModel = (T)Activator.CreateInstance(newModelType, args);
@@ -32,6 +32,8 @@ namespace ObjectBuilder
 
 			var newModelEntryProperty = newModelEntryProperties.Single();
 			var newModelEntry = newModelEntryProperty.GetValue(_modelGraph);
+			//TODO: if null create entry dictionary
+
 			var newModelEntryAdd = newModelEntry.GetType().GetMethod("Add");
 			newModelEntryAdd.Invoke(newModelEntry, new object[] { id, newModel });
 
