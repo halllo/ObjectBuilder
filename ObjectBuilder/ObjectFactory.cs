@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ObjectBuilder
 {
@@ -39,12 +41,61 @@ namespace ObjectBuilder
 		{
 			var modelGraph = mGraphProcessor(states);
 
+			AssignFactory(modelGraph, new Factory<TModels>(modelGraph, Compose));
+
+			Compose(modelGraph);
+
+			return modelGraph;
+		}
+
+		private void Compose(TModels modelGraph)
+		{
 			foreach (var relation in mComposer.Relations)
 			{
 				relation.Compose(modelGraph);
 			}
+		}
 
-			return modelGraph;
+		private void Compose(TModels modelGraph, Type relevantType)
+		{
+			var relevantRelations = mComposer.Relations.Where(r =>
+			{
+				var genericTypes = r.GetType().GetGenericArguments();
+				return genericTypes[1].IsAssignableFrom(relevantType) || genericTypes[3].IsAssignableFrom(relevantType);
+			});
+
+			foreach (var relation in relevantRelations)
+			{
+				relation.Compose(modelGraph);
+			}
+		}
+
+		private static void AssignFactory(TModels modelGraph, IFactory factory)
+		{
+			var modelGraphType = modelGraph.GetType();
+
+			var objects = modelGraphType.GetProperties().SelectMany(p =>
+			{
+				var modelGraphEntry = p.GetValue(modelGraph);
+				if (modelGraphEntry != null)
+				{
+					var modelGraphEntryValues = p.PropertyType.GetProperty("Values").GetValue(modelGraphEntry);
+					return ((IEnumerable)modelGraphEntryValues).OfType<object>();
+				}
+				else
+				{
+					return Enumerable.Empty<object>();
+				}
+			}).ToList();
+
+			foreach (var o in objects)
+			{
+				var modelFactoryProperty = o.GetType().GetProperties().FirstOrDefault(p => p.PropertyType == typeof(IFactory));
+				if (modelFactoryProperty != null)
+				{
+					modelFactoryProperty.SetValue(o, factory);
+				}
+			}
 		}
 	}
 

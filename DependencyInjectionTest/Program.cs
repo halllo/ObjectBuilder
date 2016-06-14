@@ -31,7 +31,6 @@ namespace DependencyInjectionTest
 
 			var graph = Tests.Instantiate(states);
 			var akte = graph.Akten[2];
-			akte.RechnungStellen();
 		}
 	}
 
@@ -43,6 +42,7 @@ namespace DependencyInjectionTest
 		{
 			var states = new ModelStates
 			{
+				Rechnungen = new List<Rechnung_State>(),
 				Akten = new List<Akte_State>
 				{
 					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung },
@@ -77,11 +77,49 @@ namespace DependencyInjectionTest
 			Assert.AreEqual(graph.Personen.Values.ElementAt(0), graph.Personen.Values.ElementAt(1).Eltern);
 		}
 
+		[TestMethod]
+		public void AkteErzeugtRechnung()
+		{
+			var states = new ModelStates
+			{
+				Rechnungen = new List<Rechnung_State>(),
+				Akten = new List<Akte_State>
+				{
+					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung },
+				},
+				Personen = new List<Person_State>
+				{
+					new Person_State { Id = 1, FirstName = "Manuel", LastName = "Naujoks" },
+					new Person_State { Id = 2, FirstName = "Manuel", LastName = "Naujoks", ParentId = 1},
+				},
+				Einstellungen = new List<Einstellungen_State>
+				{
+					new Einstellungen_State { Setting1 = true, Setting2 = false },
+				}
+			};
+
+
+			var graph = Instantiate(states);
+			var akte = graph.Akten.Values.First();
+			var rechnungen = akte.NeueRechnungen().ToList();
+
+
+			Assert.AreEqual(3, rechnungen.Count);
+			Assert.AreEqual(3, graph.Rechnungen.Count);
+			Assert.IsNotNull(rechnungen[0].Einstellungen);
+			Assert.IsNotNull(rechnungen[1].Einstellungen);
+			Assert.IsNotNull(rechnungen[2].Einstellungen);
+			Assert.AreEqual(akte, rechnungen[0].Akte);
+			Assert.AreEqual(akte, rechnungen[1].Akte);
+			Assert.AreEqual(akte, rechnungen[2].Akte);
+		}
+
 		public static ModelGraph Instantiate(ModelStates modelStates)
 		{
 			var factory = ObjectFactory.From<ModelStates>()
 				.SetupCreation(states => new ModelGraph
 				{
+					Rechnungen = states.Rechnungen.ToDictionary(s => s.Id, s => new Rechnung(s)),
 					Akten = states.Akten.ToDictionary(s => s.Id, s => new Akte(s)),
 					Personen = states.Personen.ToDictionary(s => s.Id, s => new Person(s)),
 					Einstellungen = states.Einstellungen.ToDictionary(s => 0, s => new Einstellungen(s)),
@@ -99,8 +137,15 @@ namespace DependencyInjectionTest
 					 * TODO:
 					 * 
 					 * better assign syntax
+                     * separate one and many compositions to not have lists recreated by later composing when creating models with Factory<>
 					 * 
 					 */
+
+					compose.One(g => g.Akten).HasMany(g => g.Rechnungen, b => b.State.AkteId)
+						.Assign(
+							init: null,
+							addMany: null,
+							setOne: (a, b) => b.Akte = a);
 
 					compose.One(g => g.Aktenstatus).HasMany(g => g.Akten, b => b.State.Status)
 						.Assign(
@@ -122,6 +167,9 @@ namespace DependencyInjectionTest
 
 					compose.One(g => g.Akten).HasMany(g => g.Einstellungen)
 						.Assign((a, b) => a.Einstellungen = b.Values.Single());
+
+					compose.One(g => g.Rechnungen).HasMany(g => g.Einstellungen)
+						.Assign((a, b) => a.Einstellungen = b.Values.Single());
 				});
 
 			return factory.Create(modelStates);
@@ -141,21 +189,32 @@ namespace DependencyInjectionTest
 
 
 
-
-
 	public class Akte
 	{
 		public Akte_State State { get; private set; }
 		public Akte(Akte_State state) { State = state; }
 
+		public IFactory Factory { get; set; }
+
 		public Aktenstatus Status { get; set; }
 		public Einstellungen Einstellungen { get; set; }
 		public Person Mandant { get; set; }
 
-		public void RechnungStellen()
+		public IEnumerable<Rechnung> NeueRechnungen()
 		{
-			Console.WriteLine(string.Format("Rechnung an: {0} {1}; Akte ist {2}", Mandant.FirstName, Mandant.LastName, Status.State));
+			yield return Factory.New<Rechnung>(-1, new Rechnung_State { AkteId = State.Id });
+			yield return Factory.New<Rechnung>(-2, new Rechnung_State { AkteId = State.Id });
+			yield return Factory.New<Rechnung>(-3, new Rechnung_State { AkteId = State.Id });
 		}
+	}
+
+	public class Rechnung
+	{
+		public Rechnung_State State { get; private set; }
+		public Rechnung(Rechnung_State state) { State = state; }
+
+		public Akte Akte { get; set; }
+		public Einstellungen Einstellungen { get; set; }
 	}
 
 	public class Aktenstatus
@@ -212,6 +271,14 @@ namespace DependencyInjectionTest
 		public Aktenstatus_State Status { get; set; }
 	}
 
+	[Serializable]
+	[DataContract]
+	public class Rechnung_State
+	{
+		public int Id { get; set; }
+		public int AkteId { get; set; }
+	}
+
 	[DataContract]
 	public enum Aktenstatus_State
 	{
@@ -258,6 +325,7 @@ namespace DependencyInjectionTest
 	public class ModelGraph
 	{
 		public Dictionary<int, Akte> Akten { get; set; }
+		public Dictionary<int, Rechnung> Rechnungen { get; set; }
 		public Dictionary<Aktenstatus_State, Aktenstatus> Aktenstatus { get; set; }
 		public Dictionary<int, Person> Personen { get; set; }
 		public Dictionary<int, Einstellungen> Einstellungen { get; set; }
@@ -269,6 +337,8 @@ namespace DependencyInjectionTest
 	{
 		[DataMember]
 		public List<Akte_State> Akten { get; set; }
+		[DataMember]
+		public List<Rechnung_State> Rechnungen { get; set; }
 		[DataMember]
 		public List<Person_State> Personen { get; set; }
 		[DataMember]
