@@ -1,45 +1,98 @@
 ﻿using System;
-using System.Linq;
+using System.Collections.Generic;
 
 namespace ObjectBuilder
 {
-	public interface IFactory
+	public static class Factory
 	{
-		T New<T>(object id, params object[] args);
-	}
-
-	internal class Factory<TModels> : IFactory
-	{
-		private readonly TModels _modelGraph;
-		private readonly Type _modelGraphType;
-		private readonly Action<TModels, Type> _compose;
-
-		public Factory(TModels modelGraph, Action<TModels, Type> compose)
+		public static ObjectCreation<TStates> From<TStates>() where TStates : new()
 		{
-			_modelGraph = modelGraph;
-			_modelGraphType = modelGraph.GetType();
-			_compose = compose;
+			return new ObjectCreation<TStates>();
 		}
 
-		public T New<T>(object id, params object[] args)
+		public static IModelGraphEntry<TModel, TId> Entry<TModel, TDto, TId>(IEnumerable<TDto> dtos, Func<TDto, TModel> getModelFunc, Func<TModel, TId> getIdFunc) where TId : struct
 		{
-			var newModelType = typeof(T);
-			var newModel = (T)Activator.CreateInstance(newModelType, args);
+			if (dtos == null)
+			{
+				return null;
+			}
 
-			var newModelEntryProperties = from property in _modelGraphType.GetProperties()
-										  where property.PropertyType.GetGenericArguments()[1].IsAssignableFrom(newModelType)
-										  select property;
+			var entry = new ModelGraphEntry<TModel, TId>(getIdFunc);
+			foreach (var dto in dtos)
+			{
+				entry.Add(getModelFunc(dto));
+			}
 
-			var newModelEntryProperty = newModelEntryProperties.Single();
-			var newModelEntry = newModelEntryProperty.GetValue(_modelGraph);
-			//TODO: if null create entry dictionary
+			return entry;
+		}
 
-			var newModelEntryAdd = newModelEntry.GetType().GetMethod("Add");
-			newModelEntryAdd.Invoke(newModelEntry, new object[] { id, newModel });
+		public static IModelGraphEntry<TModel, TId> Constant<TModel, TId>(Dictionary<TId, TModel> modelsById, Func<TModel, TId> getIdFunc)
+			where TId : struct
+		{
+			var entry = new ModelGraphEntry<TModel, TId>(getIdFunc);
+			entry.Set(modelsById);
+			return entry;
+		}
+	}
 
-			_compose(_modelGraph, newModelType);
 
-			return newModel;
+
+
+
+
+
+	public class ObjectCreation<TStates>
+	{
+		internal ObjectCreation()
+		{
+		}
+
+		public ObjectComposing<TStates, TModels> Create<TModels>(Func<TStates, TModels> statesToModels)
+		{
+			return new ObjectComposing<TStates, TModels>(statesToModels);
+		}
+
+	}
+
+
+
+
+
+
+
+	public class ObjectComposing<TStates, TModels>
+	{
+		private readonly Func<TStates, TModels> _statesToModels;
+
+		internal ObjectComposing(Func<TStates, TModels> statesToModels)
+		{
+			_statesToModels = statesToModels;
+		}
+
+		public ObjectProcessing<TStates, TModels> Compose(Action<ObjectComposer> composer)
+		{
+			var newComposer = new ObjectComposer();
+			composer(newComposer);
+
+			return new ObjectProcessing<TStates, TModels>(_statesToModels, newComposer.Composers);
+		}
+
+		public class ObjectComposer
+		{
+			internal readonly List<IComposer<TModels>> Composers = new List<IComposer<TModels>>();
+
+			internal ObjectComposer()
+			{
+			}
+
+			public OneFluent<TModels, TId, TModel> One<TId, TModel>(Func<TModels, IModelGraphEntry<TModel, TId>> getStartEntryFunc)
+				where TId : struct, IComparable<TId>
+				where TModel : class
+			{
+				var oneFluent = new OneFluent<TModels, TId, TModel>(getStartEntryFunc);
+				Composers.Add(new Composer<TModels, TModel>(oneFluent.RelationEnds));
+				return oneFluent;
+			}
 		}
 	}
 }

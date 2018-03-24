@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DependencyInjectionTest", "DependencyInjectionTest\DependencyInjectionTest.csproj", "{273A8587-4861-47B9-B600-F14D8683C42F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectBuilder.Test", "ObjectBuilder.Test\ObjectBuilder.Test.csproj", "{273A8587-4861-47B9-B600-F14D8683C42F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectBuilder", "ObjectBuilder\ObjectBuilder.csproj", "{69FFE15E-9680-4591-80A9-88188D3A6707}"
 EndProject
@@ -24,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C139FDD5-ADD2-4395-8500-F0BC64DF61A1}
 	EndGlobalSection
 EndGlobal

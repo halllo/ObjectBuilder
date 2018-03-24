@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ObjectBuilder;
 
-namespace DependencyInjectionTest
+namespace ObjectBuilder.Test
 {
 	public class Program
 	{
 		static void Main(string[] args)
 		{
-			var states = new ModelStates
+			var states = new MyModelStates
 			{
 				Akten = new List<Akte_State>
 				{
@@ -29,10 +28,13 @@ namespace DependencyInjectionTest
 			};
 
 
-			var graph = Tests.Instantiate(states);
-			var akte = graph.Akten[2];
+			var graph = ObjectGraph.Processor.CreateModelsAndCompose(states);
+			var akte = graph.Akten.GetById(2);
 		}
 	}
+
+
+
 
 	[TestClass]
 	public class Tests
@@ -40,9 +42,8 @@ namespace DependencyInjectionTest
 		[TestMethod]
 		public void AkteMitMandant()
 		{
-			var states = new ModelStates
+			var states = new MyModelStates
 			{
-				Rechnungen = new List<Rechnung_State>(),
 				Akten = new List<Akte_State>
 				{
 					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung },
@@ -60,29 +61,28 @@ namespace DependencyInjectionTest
 			};
 
 
-			var graph = Instantiate(states);
+			var graph = ObjectGraph.Processor.CreateModelsAndCompose(states);
 
 
-			Assert.AreEqual("Manuel", graph.Akten.Values.ElementAt(0).Mandant.FirstName);
-			Assert.AreEqual(1, graph.Akten.Values.ElementAt(0).State.Id);
-			Assert.AreEqual(2, graph.Akten.Values.ElementAt(1).State.Id);
-			Assert.AreEqual(graph.Akten.Values.ElementAt(0).Mandant, graph.Akten.Values.ElementAt(1).Mandant);
+			Assert.AreEqual("Manuel", graph.Akten.GetById(1).Mandant.FirstName);
+			Assert.AreEqual(1, graph.Akten.GetById(1).State.Id);
+			Assert.AreEqual(2, graph.Akten.GetById(2).State.Id);
+			Assert.AreEqual(graph.Akten.GetById(1).Mandant, graph.Akten.GetById(2).Mandant);
 
-			Assert.IsNotNull(graph.Akten.Values.First().Status);
+			Assert.IsNotNull(graph.Akten.ModelsById.First().Value.Status);
 
-			Assert.AreEqual(true, graph.Akten.Values.ElementAt(0).Einstellungen.Einstellung1);
-			Assert.AreEqual(graph.Akten.Values.ElementAt(0).Einstellungen, graph.Akten.Values.ElementAt(1).Einstellungen);
+			Assert.AreEqual(true, graph.Akten.GetById(1).Einstellungen.Einstellung1);
+			Assert.AreEqual(graph.Akten.GetById(1).Einstellungen, graph.Akten.GetById(2).Einstellungen);
 
-			Assert.IsNull(graph.Personen.Values.ElementAt(0).Eltern);
-			Assert.AreEqual(graph.Personen.Values.ElementAt(0), graph.Personen.Values.ElementAt(1).Eltern);
+			Assert.IsNull(graph.Personen.GetById(1).Eltern);
+			Assert.AreEqual(graph.Personen.GetById(1), graph.Personen.GetById(2).Eltern);
 		}
 
 		[TestMethod]
 		public void AkteErzeugtRechnung()
 		{
-			var states = new ModelStates
+			var states = new MyModelStates
 			{
-				Rechnungen = new List<Rechnung_State>(),
 				Akten = new List<Akte_State>
 				{
 					new Akte_State { Id = 1, MandantId = 1, Status = Aktenstatus_State.InBearbeitung },
@@ -99,13 +99,12 @@ namespace DependencyInjectionTest
 			};
 
 
-			var graph = Instantiate(states);
-			var akte = graph.Akten.Values.First();
-			var rechnungen = akte.NeueRechnungen().ToList();
+			var graph = ObjectGraph.Processor.CreateModelsAndCompose(states);
+
+			var akte = graph.Akten.GetById(1);
+			var rechnungen = akte.NeueRechnungen(ObjectGraph.Processor.Composer(graph)).ToList();
 
 
-			Assert.AreEqual(3, rechnungen.Count);
-			Assert.AreEqual(3, graph.Rechnungen.Count);
 			Assert.IsNotNull(rechnungen[0].Einstellungen);
 			Assert.IsNotNull(rechnungen[1].Einstellungen);
 			Assert.IsNotNull(rechnungen[2].Einstellungen);
@@ -113,68 +112,31 @@ namespace DependencyInjectionTest
 			Assert.AreEqual(akte, rechnungen[1].Akte);
 			Assert.AreEqual(akte, rechnungen[2].Akte);
 		}
-
-		public static ModelGraph Instantiate(ModelStates modelStates)
-		{
-			var factory = ObjectFactory.From<ModelStates>()
-				.SetupCreation(states => new ModelGraph
-				{
-					Rechnungen = states.Rechnungen.ToDictionary(s => s.Id, s => new Rechnung(s)),
-					Akten = states.Akten.ToDictionary(s => s.Id, s => new Akte(s)),
-					Personen = states.Personen.ToDictionary(s => s.Id, s => new Person(s)),
-					Einstellungen = states.Einstellungen.ToDictionary(s => 0, s => new Einstellungen(s)),
-					Aktenstatus = new Dictionary<Aktenstatus_State, Aktenstatus>
-					{
-						{ Aktenstatus_State.potenziell, new Aktenstatus(Aktenstatus_State.potenziell) },
-						{ Aktenstatus_State.InBearbeitung, new Aktenstatus(Aktenstatus_State.InBearbeitung) },
-						{ Aktenstatus_State.Abgeschlossen, new Aktenstatus(Aktenstatus_State.Abgeschlossen) },
-						{ Aktenstatus_State.abgelehnt, new Aktenstatus(Aktenstatus_State.abgelehnt) }
-					},
-				})
-				.SetupComposition(compose =>
-				{
-					/*
-					 * TODO:
-					 * 
-					 * better assign syntax
-                     * separate one and many compositions to not have lists recreated by later composing when creating models with Factory<>
-					 * 
-					 */
-
-					compose.One(g => g.Akten).HasMany(g => g.Rechnungen, b => b.State.AkteId)
-						.Assign(
-							init: null,
-							addMany: null,
-							setOne: (a, b) => b.Akte = a);
-
-					compose.One(g => g.Aktenstatus).HasMany(g => g.Akten, b => b.State.Status)
-						.Assign(
-							init: null,
-							addMany: null,
-							setOne: (a, b) => b.Status = a);
-
-					compose.One(g => g.Personen).HasMany(g => g.Akten, b => b.State.MandantId)
-						.Assign(
-							init: a => a.Akten = new List<Akte>(),
-							addMany: (a, b) => a.Akten.Add(b),
-							setOne: (a, b) => b.Mandant = a);
-
-					compose.One(g => g.Personen).HasMany(g => g.Personen, b => b.State.ParentId)
-						.Assign(
-							init: null,
-							addMany: null,
-							setOne: (a, b) => b.Eltern = a);
-
-					compose.One(g => g.Akten).HasMany(g => g.Einstellungen)
-						.Assign((a, b) => a.Einstellungen = b.Values.Single());
-
-					compose.One(g => g.Rechnungen).HasMany(g => g.Einstellungen)
-						.Assign((a, b) => a.Einstellungen = b.Values.Single());
-				});
-
-			return factory.Create(modelStates);
-		}
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -194,17 +156,16 @@ namespace DependencyInjectionTest
 		public Akte_State State { get; private set; }
 		public Akte(Akte_State state) { State = state; }
 
-		public IFactory Factory { get; set; }
-
 		public Aktenstatus Status { get; set; }
 		public Einstellungen Einstellungen { get; set; }
 		public Person Mandant { get; set; }
+		public List<Rechnung> Rechnungen { get; set; }
 
-		public IEnumerable<Rechnung> NeueRechnungen()
+		public IEnumerable<Rechnung> NeueRechnungen(IModelComposer composer)
 		{
-			yield return Factory.New<Rechnung>(-1, new Rechnung_State { AkteId = State.Id });
-			yield return Factory.New<Rechnung>(-2, new Rechnung_State { AkteId = State.Id });
-			yield return Factory.New<Rechnung>(-3, new Rechnung_State { AkteId = State.Id });
+			yield return composer.Compose(new Rechnung(new Rechnung_State { Id = composer.TemporaryId, AkteId = State.Id }));
+			yield return composer.Compose(new Rechnung(new Rechnung_State { Id = composer.TemporaryId, AkteId = State.Id }));
+			yield return composer.Compose(new Rechnung(new Rechnung_State { Id = composer.TemporaryId, AkteId = State.Id }));
 		}
 	}
 
@@ -228,9 +189,9 @@ namespace DependencyInjectionTest
 		public Person_State State { get; private set; }
 		public Person(Person_State state) { State = state; }
 
-		public string FirstName { get { return State.FirstName; } }
+		public string FirstName => State.FirstName;
 
-		public string LastName { get { return State.LastName; } }
+		public string LastName => State.LastName;
 
 		public List<Akte> Akten { get; set; }
 
@@ -242,8 +203,8 @@ namespace DependencyInjectionTest
 		public Einstellungen_State State { get; private set; }
 		public Einstellungen(Einstellungen_State state) { State = state; }
 
-		public bool Einstellung1 { get { return State.Setting1; } }
-		public bool Einstellung2 { get { return State.Setting2; } }
+		public bool Einstellung1 => State.Setting1;
+		public bool Einstellung2 => State.Setting2;
 	}
 
 
@@ -322,18 +283,33 @@ namespace DependencyInjectionTest
 
 
 
-	public class ModelGraph
-	{
-		public Dictionary<int, Akte> Akten { get; set; }
-		public Dictionary<int, Rechnung> Rechnungen { get; set; }
-		public Dictionary<Aktenstatus_State, Aktenstatus> Aktenstatus { get; set; }
-		public Dictionary<int, Person> Personen { get; set; }
-		public Dictionary<int, Einstellungen> Einstellungen { get; set; }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	public class MyModels
+	{
+		public IModelGraphEntry<Akte, int> Akten { get; set; }
+		public IModelGraphEntry<Rechnung, int> Rechnungen { get; set; }
+		public IModelGraphEntry<Aktenstatus, Aktenstatus_State> Aktenstatus { get; set; }
+		public IModelGraphEntry<Person, int> Personen { get; set; }
+		public IModelGraphEntry<Einstellungen, int> Einstellungen { get; set; }
 	}
 
 	[DataContract]
-	public class ModelStates
+	public class MyModelStates
 	{
 		[DataMember]
 		public List<Akte_State> Akten { get; set; }
@@ -343,5 +319,70 @@ namespace DependencyInjectionTest
 		public List<Person_State> Personen { get; set; }
 		[DataMember]
 		public List<Einstellungen_State> Einstellungen { get; set; }
+	}
+
+
+	public class ObjectGraph
+	{
+		public static ObjectProcessing<MyModelStates, MyModels> Processor { get; }
+		public static IModelGraphEntry<Aktenstatus, Aktenstatus_State> Aktenstatus { get; }
+
+		static ObjectGraph()
+		{
+			Aktenstatus = Factory.Constant(new Dictionary<Aktenstatus_State, Aktenstatus>
+			{
+				{Aktenstatus_State.potenziell, new Aktenstatus(Aktenstatus_State.potenziell)},
+				{Aktenstatus_State.InBearbeitung, new Aktenstatus(Aktenstatus_State.InBearbeitung)},
+				{Aktenstatus_State.Abgeschlossen, new Aktenstatus(Aktenstatus_State.Abgeschlossen)},
+				{Aktenstatus_State.abgelehnt, new Aktenstatus(Aktenstatus_State.abgelehnt)}
+			}, m => m.State);
+
+			Processor = Factory.From<MyModelStates>()
+				.Create(states =>
+				{
+					return new MyModels
+					{
+						Aktenstatus = Aktenstatus,
+						Akten = Factory.Entry(states.Akten, s => new Akte(s), m => m.State.Id),
+						Rechnungen = Factory.Entry(states.Rechnungen, s => new Rechnung(s), m => m.State.Id),
+						Personen = Factory.Entry(states.Personen, s => new Person(s), m => m.State.Id),
+						Einstellungen = Factory.Entry(states.Einstellungen, s => new Einstellungen(s), m => 0),
+					};
+				})
+				.Compose(compose =>
+				{
+					compose.One(g => g.Akten)
+						.HasMany(g => g.Rechnungen,
+							a => a.State.Id,
+							r => r.State.AkteId,
+							a => a.Rechnungen = new List<Rechnung>(),
+							(a, r) => a.Rechnungen.Add(r))
+						.HasOne(g => g.Aktenstatus,
+							s => (Aktenstatus_State?)s.State.Status,
+							(a, s) => a.Status = s)
+						.HasOne(g => g.Personen,
+							p => (int?)p.State.MandantId,
+							(a, p) => a.Mandant = p)
+						.HasImplicit(g => g.Einstellungen,
+							(a, e) => a.Einstellungen = e.Single());
+
+					compose.One(g => g.Rechnungen)
+						.HasOne(g => g.Akten,
+							r => (int?)r.State.AkteId,
+							(r, a) => r.Akte = a)
+						.HasImplicit(g => g.Einstellungen,
+							(r, e) => r.Einstellungen = e.Single());
+
+					compose.One(g => g.Personen)
+						.HasMany(g => g.Akten,
+							p => p.State.Id,
+							a => a.State.MandantId,
+							p => p.Akten = new List<Akte>(),
+							(p, a) => p.Akten.Add(a))
+						.HasOne(g => g.Personen,
+							p => (int?)p.State.ParentId,
+							(p, p2) => p.Eltern = p2);
+				});
+		}
 	}
 }

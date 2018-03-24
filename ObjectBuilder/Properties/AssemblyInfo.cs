@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("ObjectBuilder")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("STPAG")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("ObjectBuilder")]
-[assembly: AssemblyCopyright("Copyright © STPAG 2016")]
+[assembly: AssemblyCopyright("Copyright © Manuel Naujoks 2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
