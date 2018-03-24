@@ -11,24 +11,24 @@ namespace ObjectBuilder
 
 	internal class ModelComposer<TStates, TModels> : IModelComposer
 	{
-		private readonly ObjectProcessing<TStates, TModels> _objectProcessing;
+		private readonly ObjectBuilder<TStates, TModels> _objectBuilder;
 		private readonly TModels _models;
 
-		internal ModelComposer(ObjectProcessing<TStates, TModels> objectProcessing, TModels models)
+		internal ModelComposer(ObjectBuilder<TStates, TModels> objectBuilder, TModels models)
 		{
-			_objectProcessing = objectProcessing;
+			_objectBuilder = objectBuilder;
 			_models = models;
 		}
 
 		public TModel Compose<TModel>(TModel model)
 		{
-			_objectProcessing.Compose(_models, model);
+			_objectBuilder.Compose(_models, model);
 			return model;
 		}
 
 		public TModel Compose<TModel>(TModel model, Type propertyType, params Type[] propertyTypes)
 		{
-			_objectProcessing.Compose(_models, model, propertyType, propertyTypes);
+			_objectBuilder.Compose(_models, model, propertyType, propertyTypes);
 			return model;
 		}
 

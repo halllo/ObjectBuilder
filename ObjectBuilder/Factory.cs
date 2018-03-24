@@ -69,12 +69,12 @@ namespace ObjectBuilder
 			_statesToModels = statesToModels;
 		}
 
-		public ObjectProcessing<TStates, TModels> Compose(Action<ObjectComposer> composer)
+		public ObjectBuilder<TStates, TModels> Compose(Action<ObjectComposer> composer)
 		{
 			var newComposer = new ObjectComposer();
 			composer(newComposer);
 
-			return new ObjectProcessing<TStates, TModels>(_statesToModels, newComposer.Composers);
+			return new ObjectBuilder<TStates, TModels>(_statesToModels, newComposer.Composers);
 		}
 
 		public class ObjectComposer

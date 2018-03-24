@@ -5,12 +5,12 @@ using System.Reflection;
 
 namespace ObjectBuilder
 {
-	public class ObjectProcessing<TStates, TModels>
+	public class ObjectBuilder<TStates, TModels>
 	{
 		private readonly Func<TStates, TModels> _statesToModels;
 		private readonly List<IComposer<TModels>> _composers;
 
-		internal ObjectProcessing(Func<TStates, TModels> statesToModels, List<IComposer<TModels>> composers)
+		internal ObjectBuilder(Func<TStates, TModels> statesToModels, List<IComposer<TModels>> composers)
 		{
 			_statesToModels = statesToModels;
 			_composers = composers;

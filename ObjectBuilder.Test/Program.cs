@@ -28,7 +28,7 @@ namespace ObjectBuilder.Test
 			};
 
 
-			var graph = ObjectGraph.Processor.CreateModelsAndCompose(states);
+			var graph = ObjectGraph.Builder.CreateModelsAndCompose(states);
 			var akte = graph.Akten.GetById(2);
 		}
 	}
@@ -61,7 +61,7 @@ namespace ObjectBuilder.Test
 			};
 
 
-			var graph = ObjectGraph.Processor.CreateModelsAndCompose(states);
+			var graph = ObjectGraph.Builder.CreateModelsAndCompose(states);
 
 
 			Assert.AreEqual("Manuel", graph.Akten.GetById(1).Mandant.FirstName);
@@ -99,10 +99,10 @@ namespace ObjectBuilder.Test
 			};
 
 
-			var graph = ObjectGraph.Processor.CreateModelsAndCompose(states);
+			var graph = ObjectGraph.Builder.CreateModelsAndCompose(states);
 
 			var akte = graph.Akten.GetById(1);
-			var rechnungen = akte.NeueRechnungen(ObjectGraph.Processor.Composer(graph)).ToList();
+			var rechnungen = akte.NeueRechnungen(ObjectGraph.Builder.Composer(graph)).ToList();
 
 
 			Assert.IsNotNull(rechnungen[0].Einstellungen);
@@ -324,7 +324,7 @@ namespace ObjectBuilder.Test
 
 	public class ObjectGraph
 	{
-		public static ObjectProcessing<MyModelStates, MyModels> Processor { get; }
+		public static ObjectBuilder<MyModelStates, MyModels> Builder { get; }
 		public static IModelGraphEntry<Aktenstatus, Aktenstatus_State> Aktenstatus { get; }
 
 		static ObjectGraph()
@@ -337,7 +337,7 @@ namespace ObjectBuilder.Test
 				{Aktenstatus_State.abgelehnt, new Aktenstatus(Aktenstatus_State.abgelehnt)}
 			}, m => m.State);
 
-			Processor = Factory.From<MyModelStates>()
+			Builder = Factory.From<MyModelStates>()
 				.Create(states =>
 				{
 					return new MyModels
